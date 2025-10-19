@@ -21,7 +21,7 @@ def calculate_all_portfolios(market_data: pd.DataFrame, date: str) -> pd.DataFra
         Combined DataFrame with all portfolios' weights
     """
     # Read base template
-    base_df = pd.read_csv('vanguard_base.csv')
+    base_df = pd.read_csv('vanguard_base_eu_lifestrategy.csv')
 
     # Process each portfolio
     df = None

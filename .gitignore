@@ -48,7 +48,6 @@ logs/
 output/
 *.csv
 *.xlsx
-!vanguard_base.csv
 !vanguard_base_eu_lifestrategy.csv
 
 # Temporary files
