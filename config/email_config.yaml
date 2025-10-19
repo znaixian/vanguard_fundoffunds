@@ -1,0 +1,19 @@
+smtp:
+  server: "smtp.gmail.com"
+  port: 587
+  use_tls: true
+  username: "znaixian@gmail.com"
+  password_file: "config/email_password.txt"  # Gitignored
+
+recipients:
+  success:
+    - "naixian.carucci@factset.com"
+  partial:
+    - "naixian.carucci@factset.com"
+  failure:
+    - "naixian.carucci@factset.com"
+
+attachments:
+  include_logs: true
+  include_summary_excel: false
+  max_size_mb: 10

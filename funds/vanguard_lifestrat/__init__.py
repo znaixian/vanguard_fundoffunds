@@ -1,0 +1,1 @@
+"""Vanguard LifeStrategy fund calculator."""

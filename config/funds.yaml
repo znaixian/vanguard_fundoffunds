@@ -1,0 +1,13 @@
+# Active Funds Configuration
+# Add or remove funds from this list to control which funds run in the daily pipeline
+
+active_funds:
+  - vanguard_lifestrat
+  # - fund_2  # Uncomment when ready to add
+  # - fund_3  # Uncomment when ready to add
+
+# Fund metadata (optional - for documentation/reference)
+fund_info:
+  vanguard_lifestrat:
+    description: "Vanguard LifeStrategy EU Funds (4 portfolios: LSE20/40/60/80)"
+    portfolios: 4

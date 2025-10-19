@@ -1,0 +1,19 @@
+global:
+  # No global ucits_cap - each fund must specify its own cap
+  sum_tolerance_pct: 0.01  # ±0.01%
+  sum_tolerance_abs: 0.0001
+
+  reconciliation:
+    enabled: true
+    change_threshold_pct: 5.0  # Alert if weight change > 5%
+    lookback_days: 1  # Compare with T-1
+
+  data_quality:
+    allow_missing_data: false
+    allow_negative_weights: false
+
+# Fund-specific configuration (each fund must specify ucits_cap)
+fund_overrides:
+  vanguard_lifestrat:
+    ucits_cap: 19.25  # Vanguard-specific cap
+    sum_tolerance_pct: 0.005  # Stricter tolerance

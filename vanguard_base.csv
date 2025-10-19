@@ -1,0 +1,57 @@
+Fund ID,Equity Allocation,Fund Benchmark ,Benchmark ID,Fund Description,Benchmark Description
+LSE80,80,LSETF 80% Benchmark,LSE80_LHMN34611 ,Vanguard Global Aggregate Bond UCITS ETF,Bloomberg Global Aggregate Float-Adjusted and Scaled
+LSE80,80,LSETF 80% Benchmark,LSE80_LHMN21140,Vanguard USD Treasury Bond UCITS ETF,Bloomberg Global Aggregate - US Treasury Float Adjusted
+LSE80,80,LSETF 80% Benchmark,LSE80_LHMN9913,Vanguard USD Corporate Bond UCITS ETF,Bloomberg Global Aggregate Corporate - United States Dollar
+LSE80,80,LSETF 80% Benchmark,LSE80_LHMN21153,Vanguard UK Gilt UCITS ETF,Bloomberg Gilts Float Adjusted
+LSE80,80,LSETF 80% Benchmark,LSE80_LHMN2004,Vanguard EUR Eurozone Government Bond UCITS ETF,Bloomberg Euro Aggregate Government - Treasury
+LSE80,80,LSETF 80% Benchmark,LSE80_LHMN2002,Vanguard EUR Corporate Bond UCITS ETF,Bloomberg Euro Aggregate Credit - Corporate
+LSE80,80,LSETF 80% Benchmark,LSE80_I00010,Vanguard FTSE All-World UCITS ETF,FTSE All-World
+LSE80,80,LSETF 80% Benchmark,LSE80_I01018,Vanguard FTSE Developed World UCITS ETF,FTSE All-World Developed
+LSE80,80,LSETF 80% Benchmark,LSE80_I01270,Vanguard FTSE Emerging Markets UCITS ETF,FTSE All-World Emerging
+LSE80,80,LSETF 80% Benchmark,LSE80_I00586,Vanguard FTSE North America UCITS ETF,FTSE All-World North America
+LSE80,80,LSETF 80% Benchmark,LSE80_I27049,Vanguard FTSE Developed Europe UCITS ETF,FTSE All-World Developed Europe
+LSE80,80,LSETF 80% Benchmark,LSE80_I26152,Vanguard FTSE Developed Asia Pacific ex Japan UCITS ETF,FTSE All-World Developed Asia Pacific x JP
+LSE80,80,LSETF 80% Benchmark,LSE80_180948,Vanguard FTSE Japan UCITS ETF,FTSE Japan
+LSE80,80,LSETF 80% Benchmark,LSE80_SP50,Vanguard S&P 500 UCITS ETF,S&P 500
+LSE60,60,LSETF 60% Benchmark,LSE60_LHMN34611 ,Vanguard Global Aggregate Bond UCITS ETF,Bloomberg Global Aggregate Float-Adjusted and Scaled
+LSE60,60,LSETF 60% Benchmark,LSE60_LHMN21140,Vanguard USD Treasury Bond UCITS ETF,Bloomberg Global Aggregate - US Treasury Float Adjusted
+LSE60,60,LSETF 60% Benchmark,LSE60_LHMN9913,Vanguard USD Corporate Bond UCITS ETF,Bloomberg Global Aggregate Corporate - United States Dollar
+LSE60,60,LSETF 60% Benchmark,LSE60_LHMN21153,Vanguard UK Gilt UCITS ETF,Bloomberg Gilts Float Adjusted
+LSE60,60,LSETF 60% Benchmark,LSE60_LHMN2004,Vanguard EUR Eurozone Government Bond UCITS ETF,Bloomberg Euro Aggregate Government - Treasury
+LSE60,60,LSETF 60% Benchmark,LSE60_LHMN2002,Vanguard EUR Corporate Bond UCITS ETF,Bloomberg Euro Aggregate Credit - Corporate
+LSE60,60,LSETF 60% Benchmark,LSE60_I00010,Vanguard FTSE All-World UCITS ETF,FTSE All-World
+LSE60,60,LSETF 60% Benchmark,LSE60_I01018,Vanguard FTSE Developed World UCITS ETF,FTSE All-World Developed
+LSE60,60,LSETF 60% Benchmark,LSE60_I01270,Vanguard FTSE Emerging Markets UCITS ETF,FTSE All-World Emerging
+LSE60,60,LSETF 60% Benchmark,LSE60_I00586,Vanguard FTSE North America UCITS ETF,FTSE All-World North America
+LSE60,60,LSETF 60% Benchmark,LSE60_I27049,Vanguard FTSE Developed Europe UCITS ETF,FTSE All-World Developed Europe
+LSE60,60,LSETF 60% Benchmark,LSE60_I26152,Vanguard FTSE Developed Asia Pacific ex Japan UCITS ETF,FTSE All-World Developed Asia Pacific x JP
+LSE60,60,LSETF 60% Benchmark,LSE60_180948,Vanguard FTSE Japan UCITS ETF,FTSE Japan
+LSE60,60,LSETF 60% Benchmark,LSE60_SP50,Vanguard S&P 500 UCITS ETF,S&P 500
+LSE40,40,LSETF 40% Benchmark,LSE40_LHMN34611 ,Vanguard Global Aggregate Bond UCITS ETF,Bloomberg Global Aggregate Float-Adjusted and Scaled
+LSE40,40,LSETF 40% Benchmark,LSE40_LHMN21140,Vanguard USD Treasury Bond UCITS ETF,Bloomberg Global Aggregate - US Treasury Float Adjusted
+LSE40,40,LSETF 40% Benchmark,LSE40_LHMN9913,Vanguard USD Corporate Bond UCITS ETF,Bloomberg Global Aggregate Corporate - United States Dollar
+LSE40,40,LSETF 40% Benchmark,LSE40_LHMN21153,Vanguard UK Gilt UCITS ETF,Bloomberg Gilts Float Adjusted
+LSE40,40,LSETF 40% Benchmark,LSE40_LHMN2004,Vanguard EUR Eurozone Government Bond UCITS ETF,Bloomberg Euro Aggregate Government - Treasury
+LSE40,40,LSETF 40% Benchmark,LSE40_LHMN2002,Vanguard EUR Corporate Bond UCITS ETF,Bloomberg Euro Aggregate Credit - Corporate
+LSE40,40,LSETF 40% Benchmark,LSE40_I00010,Vanguard FTSE All-World UCITS ETF,FTSE All-World
+LSE40,40,LSETF 40% Benchmark,LSE40_I01018,Vanguard FTSE Developed World UCITS ETF,FTSE All-World Developed
+LSE40,40,LSETF 40% Benchmark,LSE40_I01270,Vanguard FTSE Emerging Markets UCITS ETF,FTSE All-World Emerging
+LSE40,40,LSETF 40% Benchmark,LSE40_I00586,Vanguard FTSE North America UCITS ETF,FTSE All-World North America
+LSE40,40,LSETF 40% Benchmark,LSE40_I27049,Vanguard FTSE Developed Europe UCITS ETF,FTSE All-World Developed Europe
+LSE40,40,LSETF 40% Benchmark,LSE40_I26152,Vanguard FTSE Developed Asia Pacific ex Japan UCITS ETF,FTSE All-World Developed Asia Pacific x JP
+LSE40,40,LSETF 40% Benchmark,LSE40_180948,Vanguard FTSE Japan UCITS ETF,FTSE Japan
+LSE40,40,LSETF 40% Benchmark,LSE40_SP50,Vanguard S&P 500 UCITS ETF,S&P 500
+LSE20,20,LSETF 20% Benchmark,LSE20_LHMN34611 ,Vanguard Global Aggregate Bond UCITS ETF,Bloomberg Global Aggregate Float-Adjusted and Scaled
+LSE20,20,LSETF 20% Benchmark,LSE20_LHMN21140,Vanguard USD Treasury Bond UCITS ETF,Bloomberg Global Aggregate - US Treasury Float Adjusted
+LSE20,20,LSETF 20% Benchmark,LSE20_LHMN9913,Vanguard USD Corporate Bond UCITS ETF,Bloomberg Global Aggregate Corporate - United States Dollar
+LSE20,20,LSETF 20% Benchmark,LSE20_LHMN21153,Vanguard UK Gilt UCITS ETF,Bloomberg Gilts Float Adjusted
+LSE20,20,LSETF 20% Benchmark,LSE20_LHMN2004,Vanguard EUR Eurozone Government Bond UCITS ETF,Bloomberg Euro Aggregate Government - Treasury
+LSE20,20,LSETF 20% Benchmark,LSE20_LHMN2002,Vanguard EUR Corporate Bond UCITS ETF,Bloomberg Euro Aggregate Credit - Corporate
+LSE20,20,LSETF 20% Benchmark,LSE20_I00010,Vanguard FTSE All-World UCITS ETF,FTSE All-World
+LSE20,20,LSETF 20% Benchmark,LSE20_I01018,Vanguard FTSE Developed World UCITS ETF,FTSE All-World Developed
+LSE20,20,LSETF 20% Benchmark,LSE20_I01270,Vanguard FTSE Emerging Markets UCITS ETF,FTSE All-World Emerging
+LSE20,20,LSETF 20% Benchmark,LSE20_I00586,Vanguard FTSE North America UCITS ETF,FTSE All-World North America
+LSE20,20,LSETF 20% Benchmark,LSE20_I27049,Vanguard FTSE Developed Europe UCITS ETF,FTSE All-World Developed Europe
+LSE20,20,LSETF 20% Benchmark,LSE20_I26152,Vanguard FTSE Developed Asia Pacific ex Japan UCITS ETF,FTSE All-World Developed Asia Pacific x JP
+LSE20,20,LSETF 20% Benchmark,LSE20_180948,Vanguard FTSE Japan UCITS ETF,FTSE Japan
+LSE20,20,LSETF 20% Benchmark,LSE20_SP50,Vanguard S&P 500 UCITS ETF,S&P 500
