@@ -141,7 +141,7 @@ class TestCalculateAllPortfolios:
     def test_market_data_with_missing_security(self, sample_market_data):
         """Test handling when market data is missing for a security."""
         # Remove one security from market data
-        incomplete_data = sample_market_data[sample_market_data['id'] != 'I01270'].copy()
+        incomplete_data = sample_market_data[sample_market_data['symbol'] != 'I01270'].copy()
 
         # Should still run, might have warnings or zeros for missing data
         result = calculate_all_portfolios(incomplete_data, "20250821")
@@ -161,8 +161,8 @@ class TestEdgeCases:
     def test_zero_market_cap(self, base_template):
         """Test handling of zero market cap."""
         market_data = pd.DataFrame({
-            'id': ['LHMN34611', 'I00010'],
-            'market_cap': [0.0, 1.0]  # Zero market cap
+            'symbol': ['LHMN34611', 'I00010'],
+            'MarketCapIndex': [0.0, 1.0]  # Zero market cap
         })
 
         # Should handle gracefully without division by zero
@@ -174,8 +174,8 @@ class TestEdgeCases:
     def test_very_large_market_cap(self, base_template):
         """Test handling of very large market caps."""
         market_data = pd.DataFrame({
-            'id': ['LHMN34611', 'I00010', 'I01018'],
-            'market_cap': [1.0, 1.0, 1e15]  # Very large market cap
+            'symbol': ['LHMN34611', 'I00010', 'I01018'],
+            'MarketCapIndex': [1.0, 1.0, 1e15]  # Very large market cap
         })
 
         result = calculate_weights('LSE80', base_template.copy(), market_data)

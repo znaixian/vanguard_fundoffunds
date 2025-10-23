@@ -4,7 +4,7 @@ Versioned file I/O with audit trail
 """
 
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 import json
 from typing import Optional, Dict
@@ -86,11 +86,11 @@ class VersionedFileHandler:
         Returns:
             DataFrame from previous run, or None if not found
         """
-        from datetime import datetime, timedelta
 
         fund_dir = self.base_dir / fund_name
 
         if not fund_dir.exists():
+            print(f"No previous data: Fund directory does not exist for {fund_name}")
             return None
 
         # Calculate strictly previous day (current_date - 1)
@@ -102,15 +102,17 @@ class VersionedFileHandler:
         previous_dir = fund_dir / previous_date
 
         if not previous_dir.exists():
+            print(f"No previous data: No data found for {fund_name} on {previous_date}")
             return None
 
         # Find latest file in the previous day's folder
         latest_file = previous_dir / f"{fund_name}_{previous_date}_latest.csv"
 
-        if latest_file.exists():
-            return pd.read_csv(latest_file)
+        if not latest_file.exists():
+            print(f"No previous data: Latest file not found for {fund_name} on {previous_date}")
+            return None
 
-        return None
+        return pd.read_csv(latest_file)
 
     def _get_version_number(self, output_dir: Path, fund_name: str, date: str) -> int:
         """Count existing CSV files for this date to determine version number."""

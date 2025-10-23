@@ -12,25 +12,28 @@ from datetime import datetime
 
 @pytest.fixture
 def sample_market_data():
-    """Sample market cap data for testing."""
+    """Sample market cap data for testing.
+
+    Note: LHMN34611 and I00010 are fixed weight components added automatically by the calculator,
+    so they should not be included in the market data.
+    """
     return pd.DataFrame({
-        'id': [
-            'LHMN34611', 'LHMN21140', 'LHMN9913', 'LHMN21153', 'LHMN2004', 'LHMN2002',
-            'I00010', 'I01018', 'I01270', 'I00586', 'I27049', 'I26152'
+        'symbol': [
+            'LHMN21140', 'LHMN9913', 'LHMN21153', 'LHMN2004', 'LHMN2002',
+            'I01018', 'I01270', 'I00586', 'I27049', 'I26152', '180948'
         ],
-        'market_cap': [
-            1.0,  # Fixed weight indicator
+        'MarketCapIndex': [
             13907429.834769,
             9008236.846347,
             1732624.678237,
             9381590.413234,
             3374599.379621,
-            1.0,  # Fixed weight indicator
             82031193.018944,
             9412058.672003,
             59972007.022340,
             13118308.339329,
-            3531314.177989
+            3531314.177989,
+            5093057.828
         ]
     })
 
