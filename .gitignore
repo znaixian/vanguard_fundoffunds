@@ -39,6 +39,8 @@ env/
 config/api-key.txt
 config/api_credentials.yaml
 config/email_password.txt
+.env
+!.env.example
 
 # Logs
 logs/
