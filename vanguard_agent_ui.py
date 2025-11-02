@@ -17,8 +17,13 @@ from datetime import datetime
 from anthropic import Anthropic
 
 # Import agent configuration and tools
-from agent.config import ANTHROPIC_API_KEY, MODEL, MAX_TOKENS, TOOLS, SYSTEM_PROMPT
-from agent.main import execute_tool
+try:
+    from agent.config import ANTHROPIC_API_KEY, MODEL, MAX_TOKENS, TOOLS, SYSTEM_PROMPT
+    from agent.main import execute_tool
+    print(f"[INFO] Agent modules loaded successfully. Model: {MODEL}, Tools: {len(TOOLS)}")
+except Exception as e:
+    print(f"[ERROR] Failed to import agent modules: {e}")
+    raise
 
 # Page configuration
 st.set_page_config(
@@ -63,8 +68,11 @@ st.markdown("""
 # Initialize session state
 if "messages" not in st.session_state:
     st.session_state.messages = []
+    print("[INFO] Initialized new session")
 if "conversation_history" not in st.session_state:
     st.session_state.conversation_history = []
+if "pending_query" not in st.session_state:
+    st.session_state.pending_query = None
 
 # Sidebar
 with st.sidebar:
@@ -116,7 +124,8 @@ with st.sidebar:
 
     for example in examples:
         if st.button(example, key=f"example_{example[:20]}"):
-            st.session_state.messages.append({"role": "user", "content": example})
+            # Set a flag to process this example query
+            st.session_state.pending_query = example
             st.rerun()
 
 # Main area
@@ -151,8 +160,20 @@ for message in st.session_state.messages:
                               unsafe_allow_html=True)
             st.markdown(message["content"])
 
-# Chat input
-if prompt := st.chat_input("Ask me anything about fund calculations..."):
+# Check for pending query from example buttons
+if "pending_query" in st.session_state and st.session_state.pending_query:
+    prompt = st.session_state.pending_query
+    st.session_state.pending_query = None  # Clear the flag
+    print(f"[USER] Processing example query: {prompt}")
+else:
+    # Chat input
+    prompt = st.chat_input("Ask me anything about fund calculations...")
+
+if prompt:
+    import time
+    start_time = time.time()
+    print(f"\n[USER] New message: {prompt[:100]}...")
+
     # Add user message to chat
     st.session_state.messages.append({"role": "user", "content": prompt})
 
@@ -166,16 +187,29 @@ if prompt := st.chat_input("Ask me anything about fund calculations..."):
         "content": prompt
     })
 
+    # Keep only last 10 messages to prevent slowdown (5 exchanges)
+    if len(st.session_state.conversation_history) > 10:
+        st.session_state.conversation_history = st.session_state.conversation_history[-10:]
+        print("[INFO] Trimmed conversation history to last 10 messages")
+
     # Get response from Claude
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
         tool_placeholder = st.empty()
+        status_placeholder = st.empty()
 
         try:
             # Initialize Anthropic client
+            init_start = time.time()
+            print("[API] Initializing Claude client...")
+            status_placeholder.info("Connecting to Claude...")
             client = Anthropic(api_key=ANTHROPIC_API_KEY)
+            print(f"[TIMING] Client init: {(time.time() - init_start)*1000:.0f}ms")
 
             # Call Claude API
+            api_start = time.time()
+            print(f"[API] Calling Claude API (model: {MODEL})...")
+            status_placeholder.info("Waiting for response...")
             response = client.messages.create(
                 model=MODEL,
                 max_tokens=MAX_TOKENS,
@@ -184,10 +218,15 @@ if prompt := st.chat_input("Ask me anything about fund calculations..."):
                 messages=st.session_state.conversation_history
             )
 
+            print(f"[API] Response received. Stop reason: {response.stop_reason}")
+            print(f"[TIMING] First API call: {(time.time() - api_start)*1000:.0f}ms")
             tool_calls = []
+            iteration = 0
 
             # Handle tool use
             while response.stop_reason == "tool_use":
+                iteration += 1
+                print(f"[TOOL] Processing tool use (iteration {iteration})...")
                 # Add assistant's response to history
                 st.session_state.conversation_history.append({
                     "role": "assistant",
@@ -201,14 +240,20 @@ if prompt := st.chat_input("Ask me anything about fund calculations..."):
                         tool_name = block.name
                         tool_calls.append(tool_name)
 
+                        print(f"[TOOL] Executing: {tool_name} with input: {block.input}")
+
                         # Show tool usage
+                        status_placeholder.info(f"Using tool: {tool_name}...")
                         tool_placeholder.markdown(
                             f'<div class="tool-use">[Tool] Using: {tool_name}</div>',
                             unsafe_allow_html=True
                         )
 
                         # Execute tool
+                        tool_start = time.time()
                         result = execute_tool(tool_name, block.input)
+                        print(f"[TIMING] Tool execution: {(time.time() - tool_start)*1000:.0f}ms")
+                        print(f"[TOOL] Result type: {type(result)}")
 
                         tool_results.append({
                             "type": "tool_result",
@@ -223,6 +268,9 @@ if prompt := st.chat_input("Ask me anything about fund calculations..."):
                 })
 
                 # Get next response
+                followup_start = time.time()
+                print(f"[API] Getting follow-up response after tool use...")
+                status_placeholder.info("Getting follow-up response...")
                 response = client.messages.create(
                     model=MODEL,
                     max_tokens=MAX_TOKENS,
@@ -230,12 +278,20 @@ if prompt := st.chat_input("Ask me anything about fund calculations..."):
                     tools=TOOLS,
                     messages=st.session_state.conversation_history
                 )
+                print(f"[API] Follow-up response received. Stop reason: {response.stop_reason}")
+                print(f"[TIMING] Follow-up API call: {(time.time() - followup_start)*1000:.0f}ms")
+
+            # Clear status indicator
+            status_placeholder.empty()
 
             # Extract final text response
+            print("[RESPONSE] Extracting final text...")
             full_response = ""
             for block in response.content:
                 if hasattr(block, "text"):
                     full_response += block.text
+
+            print(f"[RESPONSE] Final response length: {len(full_response)} characters")
 
             # Display final response
             message_placeholder.markdown(full_response)
@@ -255,10 +311,19 @@ if prompt := st.chat_input("Ask me anything about fund calculations..."):
                 assistant_message["tool_calls"] = tool_calls
 
             st.session_state.messages.append(assistant_message)
+            total_time = time.time() - start_time
+            print(f"[SUCCESS] Response completed successfully. Tool calls: {len(tool_calls)}")
+            print(f"[TIMING] TOTAL TIME: {total_time*1000:.0f}ms ({total_time:.1f}s)\n")
 
         except Exception as e:
-            st.error(f"Error: {str(e)}")
-            st.caption("Please check your API key and try again.")
+            print(f"\n[ERROR] {type(e).__name__}: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            print()
+
+            st.error(f"Error: {type(e).__name__}")
+            st.error(str(e))
+            st.caption("Check the terminal console for detailed error information.")
 
 # Footer
 st.markdown("---")
