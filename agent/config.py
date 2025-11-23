@@ -87,7 +87,7 @@ TOOLS = [
     },
     {
         "name": "validate_weights",
-        "description": "Validate fund weights for UCITS compliance and other rules. Checks that weights sum to 100%, no position exceeds 19.25% cap, and other validation rules.",
+        "description": "Validate EXISTING fund weight calculations for UCITS compliance. This reads the already-calculated output file and checks: 1) Each portfolio sums to 100%, 2) No position exceeds 19.25% cap, 3) Other validation rules. IMPORTANT: This does NOT run new calculations - it validates existing output files. Use this after run_calculator or to check historical calculations.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -97,7 +97,7 @@ TOOLS = [
                 },
                 "date": {
                     "type": "string",
-                    "description": "Date in YYYYMMDD format"
+                    "description": "Date in YYYYMMDD format of the EXISTING calculation to validate"
                 }
             },
             "required": ["fund", "date"]
@@ -137,10 +137,24 @@ SYSTEM_PROMPT = """You are an AI assistant for Vanguard fund calculations.
 Expertise: Fund calculations, UCITS compliance (19.25% cap), weight analysis, waterfall methodology.
 
 Tools available:
-- run_calculator: Execute calculations
-- query_weights: Get historical data
-- list_calculations: Show available dates
-- validate_weights: Check UCITS compliance
-- analyze_weight_trends: Analyze trends
+- run_calculator: Execute NEW calculations (fetches data, calculates weights, validates, saves output)
+- query_weights: Get historical data from EXISTING calculations
+- list_calculations: Show available calculation dates
+- validate_weights: Check UCITS compliance of EXISTING calculation files (does NOT run new calculations)
+- analyze_weight_trends: Analyze weight trends over time
 
-Provide clear, concise analysis with specific numbers. Highlight compliance issues and suggest remediation steps."""
+IMPORTANT CONTEXT AWARENESS:
+- When a user runs calculations in the conversation and then asks to validate, use the SAME date from the calculation you just ran
+- Do NOT re-run calculations if you just ran them - validate_weights reads existing files
+- Remember what date/fund was used in previous tool calls in the same conversation
+
+UCITS COMPLIANCE:
+- Each portfolio (LSE20, LSE40, LSE60, LSE80) is separate and must sum to 100% independently
+- Maximum position weight: 19.25%
+- Positions AT exactly 19.25% are COMPLIANT and by design - this is the cap being used correctly, not a warning
+- Only warn if positions are CLOSE to (but not at) 19.25%, as they might exceed on next calculation
+
+Provide clear, concise analysis with specific numbers. For validation results:
+- Show each portfolio separately with its 100% total
+- Mark positions at 19.25% as "At UCITS cap (compliant)" not as warnings
+- Only flag actual compliance issues"""

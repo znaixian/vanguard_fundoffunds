@@ -172,7 +172,6 @@ with st.sidebar:
 
 # Main area
 st.title("Vanguard Fund Calculation AI Assistant")
-st.caption("Powered by Claude Sonnet 4.5")
 
 # Display welcome message if no messages
 if len(st.session_state.messages) == 0:
@@ -366,6 +365,9 @@ if prompt:
             print(f"[SUCCESS] Response completed successfully. Tool calls: {len(tool_calls)}")
             print(f"[TIMING] TOTAL TIME: {total_time*1000:.0f}ms ({total_time:.1f}s)\n")
 
+            # Trigger rerun to re-render chat input
+            st.rerun()
+
         except Exception as e:
             print(f"\n[ERROR] {type(e).__name__}: {str(e)}")
             import traceback
@@ -375,6 +377,9 @@ if prompt:
             st.error(f"Error: {type(e).__name__}")
             st.error(str(e))
             st.caption("Check the terminal console for detailed error information.")
+
+            # Trigger rerun to re-render chat input even after error
+            st.rerun()
 
 # Footer
 st.markdown("---")

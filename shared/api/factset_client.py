@@ -265,3 +265,177 @@ class FactSetClient:
 
         print(f"Successfully fetched {len(formulas)} metrics for {len(df)} securities")
         return df
+
+    def get_returns(self, id_to_factset_map: dict, date: str) -> pd.DataFrame:
+        """
+        Fetch return data using RA_RET formula for given securities.
+
+        Args:
+            id_to_factset_map: Dictionary mapping internal IDs to full FactSet identifiers
+                              Example: {'LHMN34611': 'LEHHEUR:LHMN34611', 'I00010': 'FTG_N:I00010'}
+            date: Date in YYYYMMDD format (e.g., '20251121')
+
+        Returns:
+            DataFrame with columns: ['symbol', 'Return']
+            - symbol: Internal security ID
+            - Return: Daily return value
+
+        Raises:
+            APIConnectionError: Cannot reach FactSet API
+            APIAuthError: Invalid credentials
+            DataNotAvailableError: Data not available for date
+            MissingDataError: Some IDs returned null values
+
+        Example:
+            id_map = {
+                'LHMN34611': 'LEHHEUR:LHMN34611',
+                'I00010': 'FTG_N:I00010'
+            }
+            df = client.get_returns(id_map, '20251121')
+            # Returns DataFrame with columns: ['symbol', 'Return']
+        """
+        # Convert date from YYYYMMDD to MM/DD/YYYY format for RA_RET formula
+        # Example: '20251121' -> '11/21/2025'
+        year = date[:4]
+        month = date[4:6]
+        day = date[6:8]
+        formatted_date = f"{month}/{day}/{year}"
+
+        # Make the API call
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                df_result = self._fetch_returns_with_validation(id_to_factset_map, formatted_date)
+                return df_result
+            except (APIConnectionError, requests.Timeout) as e:
+                if attempt == self.max_retries:
+                    raise
+                wait_time = self.retry_delay * (2 ** (attempt - 1))
+                print(f"Returns API call failed (attempt {attempt}/{self.max_retries}), retrying in {wait_time}s: {e}")
+                time.sleep(wait_time)
+
+    def _fetch_returns_with_validation(self, id_to_factset_map: dict, formatted_date: str) -> pd.DataFrame:
+        """
+        Fetch returns using multiple RA_RET formulas.
+
+        This makes a single API call to fetch returns for all securities.
+
+        Args:
+            id_to_factset_map: Dict mapping internal IDs to FactSet identifiers
+            formatted_date: Date in MM/DD/YYYY format
+
+        Returns:
+            DataFrame with columns: ['symbol', 'Return']
+        """
+        # Build RA_RET formulas for each security
+        # Also build mapping from formula string to internal ID
+        formulas_list = []
+        formula_to_id = {}
+
+        for internal_id, factset_id in id_to_factset_map.items():
+            formula = f'RA_RET("{factset_id}",-1,{formatted_date},D,FIVEDAY,EUR,1)'
+            formulas_list.append(formula)
+            formula_to_id[formula] = internal_id
+
+        # Build URL
+        # Use the internal IDs as the ids parameter (they become the requestId in response)
+        ids_string = ','.join(id_to_factset_map.keys())
+        formulas_string = ','.join(formulas_list)
+        url = f'{self.base_url}/time-series?ids={ids_string}&formulas={formulas_string}&flatten=Y'
+
+        try:
+            response = requests.get(url, headers=self._get_auth_headers(), timeout=self.timeout)
+
+            if response.status_code == 401:
+                raise APIAuthError("Invalid or expired API credentials")
+
+            response.raise_for_status()
+
+        except requests.exceptions.ConnectionError as e:
+            raise APIConnectionError(f"Cannot reach FactSet API: {e}")
+        except requests.exceptions.Timeout as e:
+            raise APIConnectionError(f"FactSet API timeout: {e}")
+
+        # Parse response
+        try:
+            data = response.json()
+        except ValueError as e:
+            raise APIConnectionError(f"Invalid JSON response from FactSet: {e}")
+
+        if 'data' not in data:
+            raise DataNotAvailableError(f"No data returned from FactSet API for returns")
+
+        df = pd.DataFrame(data['data'])
+
+        if df.empty:
+            raise DataNotAvailableError(f"Empty return data for date {formatted_date}")
+
+        # Response structure (with flatten=Y and multiple IDs):
+        # We get one row per ID, with columns for all formulas
+        # {
+        #   "data": [
+        #     {
+        #       "requestId": "LHMN34611",
+        #       "RA_RET(\"LEHHEUR:LHMN34611\",-1,11/21/2025,D,FIVEDAY,EUR,1)": 0.123,
+        #       "RA_RET(\"LEHHEUR:LHMN21140\",-1,11/21/2025,D,FIVEDAY,EUR,1)": 0.170,
+        #       ...all other formulas...,
+        #       "date": "2025-11-21"
+        #     },
+        #     {
+        #       "requestId": "LHMN21140",
+        #       "RA_RET(\"LEHHEUR:LHMN34611\",-1,11/21/2025,D,FIVEDAY,EUR,1)": 0.123,
+        #       "RA_RET(\"LEHHEUR:LHMN21140\",-1,11/21/2025,D,FIVEDAY,EUR,1)": 0.170,
+        #       ...all other formulas...,
+        #       "date": "2025-11-21"
+        #     },
+        #     ... (one row per ID)
+        #   ]
+        # }
+
+        # We expect one row per ID
+        expected_rows = len(id_to_factset_map)
+        if len(df) != expected_rows:
+            raise DataNotAvailableError(f"Unexpected response structure: expected {expected_rows} rows, got {len(df)}")
+
+        # For each row, we need to find the matching formula for that ID
+        # Each row has the same formula columns, but we only want the value
+        # from the formula that corresponds to that row's requestId
+
+        result_data = []
+        for idx, row in df.iterrows():
+            request_id = row['requestId']
+
+            # Find the formula that corresponds to this requestId
+            # The requestId is the internal ID, so find its FactSet ID and formula
+            if request_id in id_to_factset_map:
+                factset_id = id_to_factset_map[request_id]
+                formula = f'RA_RET("{factset_id}",-1,{formatted_date},D,FIVEDAY,EUR,1)'
+
+                if formula in row.index:
+                    return_value = row[formula]
+                    result_data.append({
+                        'symbol': request_id,
+                        'Return': return_value
+                    })
+                else:
+                    raise DataNotAvailableError(f"Formula not found in row for {request_id}: {formula}")
+            else:
+                raise DataNotAvailableError(f"Unknown requestId in response: {request_id}")
+
+        result_df = pd.DataFrame(result_data)
+
+        # Validate - convert to numeric (this will convert nulls to NaN)
+        result_df['Return'] = pd.to_numeric(result_df['Return'], errors='coerce')
+
+        # Check for missing data (NaN values) - log warning but don't fail
+        if result_df['Return'].isnull().any():
+            missing = result_df[result_df['Return'].isnull()]['symbol'].tolist()
+            print(f"Warning: {len(missing)} securities have no return data (will be NA): {missing}")
+
+        # Verify all IDs were processed
+        if len(result_df) != len(id_to_factset_map):
+            missing = set(id_to_factset_map.keys()) - set(result_df['symbol'])
+            raise MissingDataError(f"IDs not returned by returns API: {missing}")
+
+        successful = result_df['Return'].notna().sum()
+        print(f"Successfully fetched returns for {successful}/{len(result_df)} securities ({len(result_df) - successful} with missing data)")
+        return result_df

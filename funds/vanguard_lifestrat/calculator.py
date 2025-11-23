@@ -9,16 +9,17 @@ from pathlib import Path
 from .config import PORTFOLIO_CONFIGS, FIXED_INCOME_COMPONENTS, EQUITY_COMPONENTS, FIXED_WEIGHT_IDS
 
 
-def calculate_all_portfolios(market_data: pd.DataFrame, date: str) -> pd.DataFrame:
+def calculate_all_portfolios(market_data: pd.DataFrame, returns_data: pd.DataFrame, date: str) -> pd.DataFrame:
     """
     Calculate weights for all portfolios (LSE20, LSE40, LSE60, LSE80).
 
     Args:
         market_data: DataFrame with columns ['symbol', 'MarketCapIndex']
+        returns_data: DataFrame with columns ['symbol', 'Return']
         date: Calculation date (YYYYMMDD)
 
     Returns:
-        Combined DataFrame with all portfolios' weights
+        Combined DataFrame with all portfolios' weights and returns
     """
     # Read base template
     base_df = pd.read_csv('vanguard_base_eu_lifestrategy.csv')
@@ -37,6 +38,41 @@ def calculate_all_portfolios(market_data: pd.DataFrame, date: str) -> pd.DataFra
 
     # Add date column at the beginning
     df.insert(0, 'Date', date)
+
+    # Merge returns data if available
+    if not returns_data.empty:
+        # Extract symbol from Benchmark ID for matching
+        # Benchmark ID format: LSE80_LHMN34611 -> extract LHMN34611
+        df['_temp_symbol'] = df['Benchmark ID'].str.extract(r'_(\w+)(?:\s+|$)')[0]
+
+        # Merge with returns data
+        df = df.merge(
+            returns_data[['symbol', 'Return']],
+            left_on='_temp_symbol',
+            right_on='symbol',
+            how='left',
+            suffixes=('', '_from_returns')
+        )
+
+        # Clean up
+        df = df.drop(columns=['_temp_symbol', 'symbol_from_returns'], errors='ignore')
+
+        # Move Return column to appear after Weight column
+        cols = df.columns.tolist()
+        if 'Return' in cols and 'Weight' in cols:
+            # Remove Return from its current position
+            cols.remove('Return')
+            # Find Weight position and insert Return after it
+            weight_idx = cols.index('Weight')
+            cols.insert(weight_idx + 1, 'Return')
+            df = df[cols]
+
+        print(f"Added Return column with {df['Return'].notna().sum()} values")
+    else:
+        # Add empty Return column if no returns data
+        weight_idx = df.columns.tolist().index('Weight')
+        df.insert(weight_idx + 1, 'Return', np.nan)
+        print("Warning: No returns data available - Return column will be empty")
 
     return df
 

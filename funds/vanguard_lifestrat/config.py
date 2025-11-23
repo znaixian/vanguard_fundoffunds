@@ -55,5 +55,14 @@ FIXED_WEIGHT_IDS = (
     EQUITY_COMPONENTS['tier_1']           # I00010 has fixed 19.25%
 )
 
-# All component IDs for API fetching (only those needing market cap)
+# All component IDs for API fetching
+# Note: For returns, we need ALL components including fixed weight ones
 ALL_COMPONENT_IDS = MARKET_CAP_REQUIRED_IDS
+ALL_COMPONENT_IDS_FOR_RETURNS = (
+    FIXED_INCOME_COMPONENTS['tier_1'] +
+    FIXED_INCOME_COMPONENTS['tier_3'] +
+    EQUITY_COMPONENTS['tier_1'] +
+    EQUITY_COMPONENTS['tier_2'] +
+    EQUITY_COMPONENTS['tier_3'] +
+    EQUITY_COMPONENTS['tier_4']
+)

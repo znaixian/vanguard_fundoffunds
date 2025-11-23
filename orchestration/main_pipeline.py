@@ -38,6 +38,7 @@ class DailyPipeline:
         self.config_loader = ConfigLoader()
         self.results = []
         self.market_data = None
+        self.returns_data = None  # Store returns data
         self.s3_uploader = S3Uploader('config/aws_config.yaml')
         self.s3_results = {}  # Track S3 upload results
 
@@ -56,6 +57,9 @@ class DailyPipeline:
         try:
             # Step 1: Fetch fresh market data (shared across all funds)
             self.market_data = self._fetch_market_data()
+
+            # Step 1a: Fetch returns data (shared across all funds)
+            self.returns_data = self._fetch_returns_data()
 
             # Step 2: Get list of funds to process
             funds = self._get_fund_list(fund_filter)
@@ -132,6 +136,46 @@ class DailyPipeline:
         self.logger.info(f"Successfully retrieved market data for {len(market_data)} securities")
         return market_data
 
+    def _fetch_returns_data(self) -> pd.DataFrame:
+        """Fetch return data for all funds."""
+        self.logger.info("Fetching returns data from FactSet")
+
+        # Collect ALL_COMPONENT_IDs and their FactSet identifiers from all active funds
+        all_funds = self._get_fund_list()
+        id_to_factset_map = {}
+
+        for fund_name in all_funds:
+            try:
+                # Import the factset_identifiers module for this fund
+                identifiers_module = importlib.import_module(f"funds.{fund_name}.factset_identifiers")
+                fund_map = getattr(identifiers_module, 'FACTSET_IDENTIFIER_MAP', {})
+
+                # Merge with main map
+                id_to_factset_map.update(fund_map)
+
+                self.logger.info(f"Loaded {len(fund_map)} FactSet identifiers from {fund_name}")
+            except (ImportError, AttributeError) as e:
+                self.logger.warning(f"Could not load FactSet identifiers for {fund_name}: {e}")
+
+        if not id_to_factset_map:
+            self.logger.warning("No FactSet identifier mappings found - returns will not be fetched")
+            # Return empty DataFrame with expected structure
+            return pd.DataFrame(columns=['symbol', 'Return'])
+
+        self.logger.info(f"Total unique securities for returns fetch: {len(id_to_factset_map)}")
+
+        # Initialize FactSet client
+        client = FactSetClient('config/api_credentials.yaml')
+
+        # Fetch returns data
+        returns_data = client.get_returns(
+            id_to_factset_map=id_to_factset_map,
+            date=self.run_date
+        )
+
+        self.logger.info(f"Successfully retrieved returns for {len(returns_data)} securities")
+        return returns_data
+
     def _get_fund_list(self, fund_filter: str = None) -> List[str]:
         """Get list of funds to process from config file."""
         # Load active funds from config
@@ -156,7 +200,8 @@ class DailyPipeline:
         runner = FundRunner(
             fund_name=fund_name,
             run_date=self.run_date,
-            market_data=self.market_data
+            market_data=self.market_data,
+            returns_data=self.returns_data
         )
 
         result = runner.run()

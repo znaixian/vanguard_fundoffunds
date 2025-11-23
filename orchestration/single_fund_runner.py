@@ -21,7 +21,7 @@ from shared.utils.config_loader import ConfigLoader
 class FundRunner:
     """Runs calculation workflow for a single fund."""
 
-    def __init__(self, fund_name: str, run_date: str, market_data: pd.DataFrame):
+    def __init__(self, fund_name: str, run_date: str, market_data: pd.DataFrame, returns_data: pd.DataFrame = None):
         """
         Initialize fund runner.
 
@@ -29,10 +29,12 @@ class FundRunner:
             fund_name: Fund name (e.g., 'vanguard_lifestrat')
             run_date: Run date (YYYYMMDD)
             market_data: Market cap data
+            returns_data: Returns data (optional)
         """
         self.fund_name = fund_name
         self.run_date = run_date
         self.market_data = market_data
+        self.returns_data = returns_data if returns_data is not None else pd.DataFrame(columns=['symbol', 'Return'])
         self.logger = FundLogger.setup_logger(f'{fund_name}', run_date)
         self.config_loader = ConfigLoader()
 
@@ -57,6 +59,7 @@ class FundRunner:
 
             weights_df = self.calculator_module.calculate_all_portfolios(
                 market_data=self.market_data,
+                returns_data=self.returns_data,
                 date=self.run_date
             )
 

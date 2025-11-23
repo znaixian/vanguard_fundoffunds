@@ -42,6 +42,11 @@ config/email_password.txt
 .env
 !.env.example
 
+# AWS credentials
+*accessKeys.csv
+*_accessKeys.csv
+vanguard-fundoffunds-app_accessKeys.csv
+
 # Logs
 logs/
 *.log
