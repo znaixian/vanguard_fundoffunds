@@ -66,6 +66,7 @@ output/
 # OS files
 Thumbs.db
 desktop.ini
+nul
 
 # Test coverage
 htmlcov/
