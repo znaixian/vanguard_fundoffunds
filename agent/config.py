@@ -8,21 +8,47 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load environment variables
+# Load environment variables from .env file
 load_dotenv()
 
+# Check if running on Streamlit Cloud and use secrets if available
+try:
+    import streamlit as st
+    # Try to access secrets - will raise error if secrets.toml doesn't exist
+    try:
+        if hasattr(st, 'secrets') and st.secrets and 'ANTHROPIC_API_KEY' in st.secrets:
+            # Running on Streamlit Cloud with secrets configured
+            ANTHROPIC_API_KEY = st.secrets['ANTHROPIC_API_KEY']
+            PROJECT_ROOT = Path(st.secrets.get('PROJECT_ROOT', '/mount/src/vanguard_fundoffunds'))
+            MODEL = st.secrets.get('CLAUDE_MODEL', 'claude-sonnet-4-5-20250929')
+            MAX_TOKENS = int(st.secrets.get('CLAUDE_MAX_TOKENS', '8000'))
+        else:
+            # Streamlit secrets exist but ANTHROPIC_API_KEY not found - use env vars
+            ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
+            PROJECT_ROOT = Path(os.getenv('PROJECT_ROOT', os.getcwd()))
+            MODEL = os.getenv('CLAUDE_MODEL', 'claude-sonnet-4-5-20250929')
+            MAX_TOKENS = int(os.getenv('CLAUDE_MAX_TOKENS', '8000'))
+    except (FileNotFoundError, Exception):
+        # No secrets.toml file found - use environment variables
+        ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
+        PROJECT_ROOT = Path(os.getenv('PROJECT_ROOT', os.getcwd()))
+        MODEL = os.getenv('CLAUDE_MODEL', 'claude-sonnet-4-5-20250929')
+        MAX_TOKENS = int(os.getenv('CLAUDE_MAX_TOKENS', '8000'))
+except ImportError:
+    # Streamlit not available - use environment variables
+    ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
+    PROJECT_ROOT = Path(os.getenv('PROJECT_ROOT', os.getcwd()))
+    MODEL = os.getenv('CLAUDE_MODEL', 'claude-sonnet-4-5-20250929')
+    MAX_TOKENS = int(os.getenv('CLAUDE_MAX_TOKENS', '8000'))
+
 # Verify API key is set
-ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
 if not ANTHROPIC_API_KEY or ANTHROPIC_API_KEY == 'your_api_key_here':
     raise ValueError(
-        "ANTHROPIC_API_KEY not set in .env file. "
-        "Please add your API key from https://console.anthropic.com"
+        "ANTHROPIC_API_KEY not set. "
+        "For local: Add to .env file. "
+        "For Streamlit Cloud: Add to Secrets Management. "
+        "Get your API key from https://console.anthropic.com"
     )
-
-# Project configuration
-PROJECT_ROOT = Path(os.getenv('PROJECT_ROOT', os.getcwd()))
-MODEL = os.getenv('CLAUDE_MODEL', 'claude-sonnet-4-5-20250929')
-MAX_TOKENS = int(os.getenv('CLAUDE_MAX_TOKENS', '8000'))
 
 
 # Tool definitions in Anthropic format

@@ -41,6 +41,8 @@ config/api_credentials.yaml
 config/email_password.txt
 .env
 !.env.example
+.streamlit/secrets.toml
+!.streamlit/secrets.toml.example
 
 # AWS credentials
 *accessKeys.csv
