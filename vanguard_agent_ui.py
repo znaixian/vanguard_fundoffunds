@@ -14,6 +14,8 @@ Usage:
 import streamlit as st
 import os
 from datetime import datetime
+from pathlib import Path
+import re
 from anthropic import Anthropic
 
 # Import agent configuration and tools
@@ -24,6 +26,43 @@ try:
 except Exception as e:
     print(f"[ERROR] Failed to import agent modules: {e}")
     raise
+
+# Helper functions
+def extract_output_paths(text: str) -> list:
+    """Extract output file paths from tool result text."""
+    paths = []
+    # Pattern to match: "Output: path/to/file.csv"
+    pattern = r'Output:\s*([^\n]+\.csv)'
+    matches = re.findall(pattern, text)
+    for match in matches:
+        path = Path(match.strip())
+        if path.exists():
+            paths.append(path)
+    return paths
+
+def display_download_section(output_files: list):
+    """Display download buttons for output files."""
+    if not output_files:
+        return
+
+    st.markdown("---")
+    st.subheader("Output Files")
+
+    for file_path in output_files:
+        if file_path.exists():
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.text(f"{file_path.name}")
+                st.caption(f"Size: {file_path.stat().st_size / 1024:.1f} KB")
+            with col2:
+                with open(file_path, 'rb') as f:
+                    st.download_button(
+                        label="Download",
+                        data=f.read(),
+                        file_name=file_path.name,
+                        mime='text/csv',
+                        key=f"download_{file_path.name}"
+                    )
 
 # Page configuration
 st.set_page_config(
@@ -73,6 +112,8 @@ if "conversation_history" not in st.session_state:
     st.session_state.conversation_history = []
 if "pending_query" not in st.session_state:
     st.session_state.pending_query = None
+if "output_files" not in st.session_state:
+    st.session_state.output_files = []
 
 # Sidebar
 with st.sidebar:
@@ -110,6 +151,7 @@ with st.sidebar:
     if st.button("Clear Conversation"):
         st.session_state.messages = []
         st.session_state.conversation_history = []
+        st.session_state.output_files = []
         st.rerun()
 
     st.markdown("---")
@@ -255,6 +297,11 @@ if prompt:
                         print(f"[TIMING] Tool execution: {(time.time() - tool_start)*1000:.0f}ms")
                         print(f"[TOOL] Result type: {type(result)}")
 
+                        # Extract output file paths if this is a calculator run
+                        if tool_name == "run_calculator" and isinstance(result, str):
+                            output_paths = extract_output_paths(result)
+                            st.session_state.output_files.extend(output_paths)
+
                         tool_results.append({
                             "type": "tool_result",
                             "tool_use_id": block.id,
@@ -295,6 +342,10 @@ if prompt:
 
             # Display final response
             message_placeholder.markdown(full_response)
+
+            # Display download section for any output files
+            if st.session_state.output_files:
+                display_download_section(st.session_state.output_files)
 
             # Add to conversation history
             st.session_state.conversation_history.append({

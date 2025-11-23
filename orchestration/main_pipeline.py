@@ -17,6 +17,7 @@ import pandas as pd
 from shared.utils.logger import FundLogger
 from shared.utils.config_loader import ConfigLoader
 from shared.utils.emailer import EmailNotifier
+from shared.utils.s3_uploader import S3Uploader
 from shared.api.factset_client import FactSetClient, MissingDataError, APIConnectionError
 from orchestration.single_fund_runner import FundRunner
 import importlib
@@ -37,6 +38,8 @@ class DailyPipeline:
         self.config_loader = ConfigLoader()
         self.results = []
         self.market_data = None
+        self.s3_uploader = S3Uploader('config/aws_config.yaml')
+        self.s3_results = {}  # Track S3 upload results
 
     def run(self, fund_filter: str = None):
         """
@@ -62,6 +65,11 @@ class DailyPipeline:
                 try:
                     result = self._process_fund(fund_name)
                     self.results.append(result)
+
+                    # Step 3a: Upload to S3 if calculation was successful
+                    if result.get('status') == 'SUCCESS' and 'output_path' in result:
+                        self._upload_to_s3(fund_name, result)
+
                 except Exception as e:
                     self.logger.error(f"Fund {fund_name} failed: {e}", exc_info=True)
                     self.results.append({
@@ -154,20 +162,73 @@ class DailyPipeline:
         result = runner.run()
         return result
 
+    def _upload_to_s3(self, fund_name: str, result: Dict):
+        """
+        Upload calculation files to S3.
+
+        Args:
+            fund_name: Fund name
+            result: Calculation result dictionary
+        """
+        if not self.s3_uploader.enabled:
+            self.logger.info("S3 upload disabled - skipping")
+            return
+
+        self.logger.info(f"Uploading {fund_name} files to S3")
+
+        # Get output directory from result
+        output_path = Path(result['output_path'])
+        output_dir = output_path.parent
+
+        # Upload fund calculation files
+        upload_results = self.s3_uploader.upload_fund_calculation(
+            fund_name=fund_name,
+            date=self.run_date,
+            output_dir=output_dir,
+            include_logs=True
+        )
+
+        # Store results for email summary
+        self.s3_results[fund_name] = upload_results
+
+        # Log summary
+        successful = sum(1 for v in upload_results.values() if v)
+        total = len(upload_results)
+
+        if successful == total:
+            self.logger.info(f"S3 upload successful: {successful}/{total} files uploaded")
+        else:
+            self.logger.warning(f"S3 upload partial: {successful}/{total} files uploaded")
+
+            # Log which files failed
+            failed_files = [f for f, success in upload_results.items() if not success]
+            self.logger.warning(f"Failed uploads: {failed_files}")
+
     def _send_summary(self):
         """Send email summary of all fund results."""
         emailer = EmailNotifier('config/email_config.yaml')
 
         # Collect attachments
         attachments = []
+
+        # Add log file
         log_file = Path('logs') / f"main_pipeline_{self.run_date}.log"
         if log_file.exists():
             attachments.append(log_file)
 
+        # Add output files from successful calculations
+        for result in self.results:
+            if result.get('status') == 'SUCCESS' and 'output_path' in result:
+                output_path = Path(result['output_path'])
+                if output_path.exists():
+                    attachments.append(output_path)
+                    self.logger.info(f"Adding output file to email: {output_path}")
+
         emailer.send_daily_summary(
             date=self.run_date,
             results=self.results,
-            attachments=attachments
+            attachments=attachments,
+            s3_results=self.s3_results
         )
 
     def _send_failure_email(self, error: str):

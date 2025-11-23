@@ -1,0 +1,255 @@
+# AWS S3 Configuration
+# This file controls how your fund calculation files are uploaded to AWS S3
+
+# WHAT IS S3?
+# -----------
+# S3 is Amazon's cloud storage service. Files uploaded to S3 are:
+# - Stored safely in Amazon's data centers
+# - Accessible from anywhere via URL
+# - Can be shared with other systems
+# - Automatically backed up
+
+# HOW TO SET UP S3 (Step-by-step guide below):
+# 1. Create an AWS account (if you don't have one)
+# 2. Create an S3 bucket
+# 3. Get AWS credentials (Access Key ID and Secret Access Key)
+# 4. Configure this file
+# 5. Set environment variables with your credentials
+
+# ============================================================================
+# CONFIGURATION
+# ============================================================================
+
+# Enable or disable S3 uploads
+# Set to 'true' to enable uploads, 'false' to disable
+enabled: true  # Change to 'true' after you set up AWS
+
+# Your S3 bucket name
+# This is the "folder" in S3 where files will be stored
+# Must be globally unique across all AWS users
+# Example: vanguard-fundoffunds-output-prod
+# Example: mycompany-fund-calculations
+bucket_name: 'vanguard-fundoffunds-prod'  # CHANGE THIS to your bucket name
+
+# AWS region where your bucket is located
+# Common regions:
+#   - us-east-1 (US East - Virginia) - most common, usually cheapest
+#   - us-west-2 (US West - Oregon)
+#   - eu-west-1 (Europe - Ireland)
+#   - ap-southeast-1 (Asia Pacific - Singapore)
+# See full list: https://docs.aws.amazon.com/general/latest/gr/rande.html
+region: 'us-east-2'  # CHANGE THIS if your bucket is in a different region
+
+# Upload options
+upload_options:
+  # Include log files in S3 upload?
+  include_logs: true
+
+  # Retry settings if upload fails
+  retry_attempts: 3
+  retry_delay_seconds: 5
+
+# ============================================================================
+# FILE ORGANIZATION IN S3
+# ============================================================================
+# Files will be organized in S3 like this:
+#
+# vanguard-fundoffunds-prod/
+#   vanguard_lifestrat/
+#     20251120/
+#       vanguard_lifestrat_20251120_085806.csv       (versioned calculation)
+#       vanguard_lifestrat_20251120_085806.json      (metadata)
+#       vanguard_lifestrat_20251120_latest.csv       (latest copy)
+#       logs/
+#         main_pipeline_20251120.log                 (pipeline log)
+#         vanguard_lifestrat_20251120.log            (fund log)
+#     20251121/
+#       ...
+#   fund_2/
+#     20251120/
+#       ...
+#
+# This matches your local 'output/' directory structure
+
+
+# ============================================================================
+# STEP-BY-STEP SETUP GUIDE
+# ============================================================================
+
+# STEP 1: Create an AWS Account (if you don't have one)
+# ------------------------------------------------------
+# 1. Go to: https://aws.amazon.com/
+# 2. Click "Create an AWS Account"
+# 3. Follow the sign-up process
+# 4. You'll need a credit card, but S3 has a free tier:
+#    - First 12 months: 5 GB storage free
+#    - 20,000 GET requests, 2,000 PUT requests per month free
+#    - Your fund files are small, so this should be plenty
+
+# STEP 2: Create an S3 Bucket
+# ----------------------------
+# 1. Log into AWS Console: https://console.aws.amazon.com/
+# 2. Search for "S3" in the top search bar
+# 3. Click "Create bucket"
+# 4. Enter a bucket name (must be unique globally):
+#    Example: vanguard-fundoffunds-yourcompany-prod
+# 5. Choose a region (use 'us-east-1' if unsure)
+# 6. Block Public Access settings:
+#    - KEEP "Block all public access" CHECKED (recommended for security)
+#    - Your files will be private, only accessible with AWS credentials
+# 7. Enable "Bucket Versioning" (recommended):
+#    - This keeps old versions of files automatically
+# 8. Click "Create bucket"
+
+# STEP 3: Create AWS Credentials (Access Keys)
+# ---------------------------------------------
+# 1. In AWS Console, click your name (top right) -> "Security credentials"
+# 2. Scroll to "Access keys" section
+# 3. Click "Create access key"
+# 4. Choose use case: "Command Line Interface (CLI)"
+# 5. Click "Next" -> "Create access key"
+# 6. IMPORTANT: Save these immediately (you can't see the secret key again):
+#    - Access Key ID: AKIAIOSFODNN7EXAMPLE
+#    - Secret Access Key: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+# 7. Download the CSV file as a backup
+
+# STEP 4: Configure This File
+# ----------------------------
+# 1. Set 'enabled: true' (line 26)
+# 2. Set 'bucket_name' to your bucket name (line 33)
+# 3. Set 'region' to match your bucket's region (line 44)
+
+# STEP 5: Set Environment Variables (Credentials)
+# ------------------------------------------------
+# OPTION A: Using Windows Environment Variables (Recommended)
+# 1. Open Command Prompt as Administrator
+# 2. Run these commands (replace with your actual keys):
+#    setx AWS_ACCESS_KEY_ID "AKIAIOSFODNN7EXAMPLE"
+#    setx AWS_SECRET_ACCESS_KEY "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+# 3. Restart your terminal/command prompt
+# 4. Verify by running: echo %AWS_ACCESS_KEY_ID%
+#
+# OPTION B: Using .env file (Alternative)
+# 1. Create a file named '.env' in the project root (same folder as run_daily_calculations.bat)
+# 2. Add these lines (replace with your actual keys):
+#    AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+#    AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+# 3. Make sure .env is in .gitignore (don't commit credentials to git!)
+#
+# OPTION C: Using AWS CLI Configuration
+# 1. Install AWS CLI: https://aws.amazon.com/cli/
+# 2. Run: aws configure
+# 3. Enter your Access Key ID, Secret Access Key, and region
+
+# STEP 6: Test the Setup
+# -----------------------
+# 1. Open terminal in project directory
+# 2. Install boto3: pip install boto3
+# 3. Run a test upload:
+#    python -m orchestration.main_pipeline --date=today
+# 4. Check your email for S3 upload status
+# 5. Verify files in S3:
+#    - Go to AWS Console -> S3
+#    - Open your bucket
+#    - You should see folders: vanguard_lifestrat/20251122/...
+
+# ============================================================================
+# TROUBLESHOOTING
+# ============================================================================
+
+# Problem: "NoCredentialsError"
+# Solution: Environment variables not set correctly
+#   - Check: echo %AWS_ACCESS_KEY_ID%
+#   - Make sure you restarted terminal after setx
+#   - Verify credentials are correct (no extra spaces)
+
+# Problem: "Bucket does not exist"
+# Solution: Bucket name typo or wrong region
+#   - Check bucket_name matches exactly (case-sensitive)
+#   - Check region matches bucket's region in AWS Console
+
+# Problem: "Access Denied"
+# Solution: IAM permissions issue
+#   - Your AWS user needs S3 permissions
+#   - In AWS Console: IAM -> Users -> Your user -> Add permissions
+#   - Attach policy: "AmazonS3FullAccess" (or create custom policy)
+
+# Problem: "Invalid bucket name"
+# Solution: Bucket names have rules:
+#   - Must be 3-63 characters
+#   - Only lowercase letters, numbers, hyphens
+#   - Must start with letter or number
+#   - No underscores, spaces, or special characters
+
+# ============================================================================
+# SECURITY BEST PRACTICES
+# ============================================================================
+
+# 1. NEVER commit AWS credentials to git
+#    - .env file should be in .gitignore
+#    - Never put credentials directly in this file
+
+# 2. Use least-privilege IAM policies
+#    - Create an IAM user specifically for this application
+#    - Only grant S3 permissions, not full AWS access
+#    - Example policy: only PutObject permission to your specific bucket
+
+# 3. Enable MFA (Multi-Factor Authentication) on your AWS account
+#    - Protects against credential theft
+
+# 4. Rotate access keys periodically
+#    - Create new keys every 90 days
+#    - Delete old keys after updating
+
+# 5. Enable S3 bucket versioning
+#    - Protects against accidental deletion or overwrites
+
+# 6. Consider using AWS Organizations and separate accounts
+#    - Production data in separate AWS account from development
+
+# ============================================================================
+# COST ESTIMATION
+# ============================================================================
+
+# S3 Pricing (as of 2024, us-east-1 region):
+# - Storage: $0.023 per GB per month
+# - PUT requests: $0.005 per 1,000 requests
+# - GET requests: $0.0004 per 1,000 requests
+#
+# Your estimated cost (if running daily):
+# - Files per day: ~4 files × 2 funds = 8 files
+# - File size: ~10 KB each = 0.01 MB
+# - Monthly storage: 8 files × 22 days × 0.01 MB = 1.76 MB ≈ 0.002 GB
+# - Monthly PUT requests: 8 × 22 = 176 requests
+# - Monthly cost: < $0.01 per month (essentially free under free tier)
+#
+# Free tier includes:
+# - 5 GB storage (you'll use 0.002 GB)
+# - 2,000 PUT requests (you'll use 176)
+# - 20,000 GET requests
+#
+# Conclusion: Your usage will be well within the free tier
+
+# ============================================================================
+# ACCESSING YOUR FILES IN S3
+# ============================================================================
+
+# Method 1: AWS Console (Web Browser)
+# - Go to: https://s3.console.aws.amazon.com/
+# - Click your bucket
+# - Navigate folders, download files by clicking them
+
+# Method 2: AWS CLI (Command Line)
+# - List files: aws s3 ls s3://your-bucket-name/vanguard_lifestrat/20251120/
+# - Download file: aws s3 cp s3://your-bucket-name/path/to/file.csv ./local-file.csv
+# - Sync folder: aws s3 sync s3://your-bucket-name/vanguard_lifestrat/ ./local-output/
+
+# Method 3: Python (boto3)
+# - import boto3
+# - s3 = boto3.client('s3')
+# - s3.download_file('your-bucket-name', 'vanguard_lifestrat/20251120/file.csv', 'local.csv')
+
+# Method 4: Presigned URLs (for sharing)
+# - Generate temporary download link (no AWS credentials needed)
+# - Valid for specified time period (e.g., 24 hours)
+# - Share link via email for easy download

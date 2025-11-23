@@ -5,6 +5,9 @@ pyyaml>=6.0
 pytest>=7.0.0
 pytest-cov>=4.0.0
 
+# AWS SDK for S3 upload
+boto3>=1.28.0
+
 # Claude/Anthropic SDK
 anthropic>=0.39.0
 python-dotenv>=1.0.0

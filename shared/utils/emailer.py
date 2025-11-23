@@ -36,7 +36,8 @@ class EmailNotifier:
         self,
         date: str,
         results: List[Dict],
-        attachments: List[Path] = None
+        attachments: List[Path] = None,
+        s3_results: Dict = None
     ):
         """
         Send daily summary email.
@@ -59,7 +60,7 @@ class EmailNotifier:
         subject = f"{status_prefix} Fund Calculations {date}"
 
         # Build email body
-        html_body = self._build_html_body(date, results)
+        html_body = self._build_html_body(date, results, s3_results or {})
 
         # Get recipients based on status
         if status_prefix == "[SUCCESS]":
@@ -79,7 +80,7 @@ class EmailNotifier:
 
         print(f"Summary email sent to: {', '.join(recipients)}")
 
-    def _build_html_body(self, date: str, results: List[Dict]) -> str:
+    def _build_html_body(self, date: str, results: List[Dict], s3_results: Dict) -> str:
         """Build HTML email body with summary table."""
         # Build table rows
         rows = []
@@ -103,6 +104,44 @@ class EmailNotifier:
             </tr>
             """)
 
+        # Build S3 upload section if available
+        s3_section = ""
+        if s3_results:
+            s3_rows = []
+            for fund_name, file_results in s3_results.items():
+                successful = sum(1 for v in file_results.values() if v)
+                total = len(file_results)
+                s3_status = "SUCCESS" if successful == total else f"PARTIAL ({successful}/{total})"
+                s3_color = "green" if successful == total else "orange"
+
+                s3_rows.append(f"""
+                <tr>
+                    <td>{fund_name}</td>
+                    <td style="color: {s3_color};">{s3_status}</td>
+                    <td>{successful}/{total} files</td>
+                </tr>
+                """)
+
+            s3_section = f"""
+            <h3>AWS S3 Upload Status</h3>
+            <table border="1" cellpadding="5" cellspacing="0">
+                <tr style="background-color: #e8f4f8;">
+                    <th>Fund</th>
+                    <th>Status</th>
+                    <th>Files Uploaded</th>
+                </tr>
+                {''.join(s3_rows)}
+            </table>
+            <p style="font-size: 11px; color: gray;">
+                Files uploaded to S3 are available in the cloud for backup and distribution.
+            </p>
+            """
+        elif any(r['status'] == 'SUCCESS' for r in results):
+            s3_section = """
+            <h3>AWS S3 Upload Status</h3>
+            <p style="color: gray;">S3 upload is currently disabled. To enable cloud backup, see config/aws_config.yaml</p>
+            """
+
         html = f"""
         <html>
         <body>
@@ -119,6 +158,8 @@ class EmailNotifier:
                 </tr>
                 {''.join(rows)}
             </table>
+
+            {s3_section}
 
             <h3>Next Steps</h3>
             <ul>
