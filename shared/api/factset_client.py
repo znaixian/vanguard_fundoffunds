@@ -8,6 +8,7 @@ import base64
 import pandas as pd
 import time
 import yaml
+import os
 from typing import List
 from pathlib import Path
 
@@ -40,7 +41,7 @@ class FactSetClient:
         Initialize FactSet client.
 
         Args:
-            credentials_path: Path to api_credentials.yaml
+            credentials_path: Path to api_credentials.yaml (will fall back to env vars if not found)
         """
         self.config = self._load_credentials(credentials_path)
         self.base_url = self.config['factset']['base_url']
@@ -49,15 +50,44 @@ class FactSetClient:
         self.retry_delay = self.config['factset']['retry_delay_seconds']
         self.username = self.config['factset']['username']
 
-        # Load API key from separate file
-        api_key_file = Path(self.config['factset']['api_key_file'])
-        with open(api_key_file) as f:
-            self.api_key = f.read().strip()
+        # Load API key from file or environment variable
+        if 'api_key_file' in self.config['factset']:
+            api_key_file = Path(self.config['factset']['api_key_file'])
+            if api_key_file.exists():
+                with open(api_key_file) as f:
+                    self.api_key = f.read().strip()
+            else:
+                # Fall back to environment variable
+                self.api_key = os.getenv('FACTSET_API_KEY', '')
+        else:
+            # Config loaded from env vars, API key already set
+            self.api_key = self.config['factset']['api_key']
 
     def _load_credentials(self, path: str) -> dict:
-        """Load credentials from YAML file."""
-        with open(path) as f:
-            return yaml.safe_load(f)
+        """
+        Load credentials from YAML file or environment variables.
+
+        Priority:
+        1. Try loading from YAML file (local setup)
+        2. Fall back to environment variables (FactSet.io deployment)
+        """
+        # Try loading from file first (existing behavior for local)
+        if os.path.exists(path):
+            with open(path) as f:
+                return yaml.safe_load(f)
+
+        # Fall back to environment variables (for FactSet.io deployment)
+        print(f"[INFO] Config file {path} not found, using environment variables")
+        return {
+            'factset': {
+                'username': os.getenv('FACTSET_USERNAME', ''),
+                'api_key': os.getenv('FACTSET_API_KEY', ''),
+                'base_url': os.getenv('FACTSET_BASE_URL', 'https://api.factset.com/formula-api/v1'),
+                'timeout_seconds': int(os.getenv('FACTSET_TIMEOUT', '30')),
+                'retry_attempts': int(os.getenv('FACTSET_RETRY_ATTEMPTS', '3')),
+                'retry_delay_seconds': int(os.getenv('FACTSET_RETRY_DELAY', '5'))
+            }
+        }
 
     def _get_auth_headers(self) -> dict:
         """Generate authentication headers."""
