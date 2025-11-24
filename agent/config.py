@@ -16,20 +16,22 @@ try:
     import streamlit as st
     # Try to access secrets - will raise error if secrets.toml doesn't exist
     try:
-        if hasattr(st, 'secrets') and st.secrets and 'ANTHROPIC_API_KEY' in st.secrets:
+        # Safely check if secrets are available
+        secrets = st.secrets
+        if 'ANTHROPIC_API_KEY' in secrets:
             # Running on Streamlit Cloud with secrets configured
-            ANTHROPIC_API_KEY = st.secrets['ANTHROPIC_API_KEY']
-            PROJECT_ROOT = Path(st.secrets.get('PROJECT_ROOT', '/mount/src/vanguard_fundoffunds'))
-            MODEL = st.secrets.get('CLAUDE_MODEL', 'claude-sonnet-4-5-20250929')
-            MAX_TOKENS = int(st.secrets.get('CLAUDE_MAX_TOKENS', '8000'))
+            ANTHROPIC_API_KEY = secrets['ANTHROPIC_API_KEY']
+            PROJECT_ROOT = Path(secrets.get('PROJECT_ROOT', '/mount/src/vanguard_fundoffunds'))
+            MODEL = secrets.get('CLAUDE_MODEL', 'claude-sonnet-4-5-20250929')
+            MAX_TOKENS = int(secrets.get('CLAUDE_MAX_TOKENS', '8000'))
         else:
             # Streamlit secrets exist but ANTHROPIC_API_KEY not found - use env vars
             ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
             PROJECT_ROOT = Path(os.getenv('PROJECT_ROOT', os.getcwd()))
             MODEL = os.getenv('CLAUDE_MODEL', 'claude-sonnet-4-5-20250929')
             MAX_TOKENS = int(os.getenv('CLAUDE_MAX_TOKENS', '8000'))
-    except (FileNotFoundError, Exception):
-        # No secrets.toml file found - use environment variables
+    except Exception:
+        # No secrets.toml file found or other error - use environment variables
         ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
         PROJECT_ROOT = Path(os.getenv('PROJECT_ROOT', os.getcwd()))
         MODEL = os.getenv('CLAUDE_MODEL', 'claude-sonnet-4-5-20250929')

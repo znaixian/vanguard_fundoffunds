@@ -31,13 +31,19 @@ except Exception as e:
 def extract_output_paths(text: str) -> list:
     """Extract output file paths from tool result text."""
     paths = []
-    # Pattern to match: "Output: path/to/file.csv"
-    pattern = r'Output:\s*([^\n]+\.csv)'
+    # Pattern to match: "  Output: path/to/file.csv" (with optional leading whitespace)
+    pattern = r'\s*Output:\s*([^\n]+\.csv)'
     matches = re.findall(pattern, text)
+    print(f"[DEBUG] extract_output_paths called with text length: {len(text)}")
+    print(f"[DEBUG] Text content:\n{text[:500]}...")  # First 500 chars
+    print(f"[DEBUG] Found {len(matches)} matches: {matches}")
     for match in matches:
         path = Path(match.strip())
+        print(f"[DEBUG] Checking path: {path} (exists: {path.exists()})")
         if path.exists():
             paths.append(path)
+            print(f"[DEBUG] Added path: {path}")
+    print(f"[DEBUG] Total paths extracted: {len(paths)}")
     return paths
 
 def display_download_section(output_files: list):
@@ -202,6 +208,10 @@ for message in st.session_state.messages:
                     st.markdown(f'<div class="tool-use">[Tool] Using: {tool_call}</div>',
                               unsafe_allow_html=True)
             st.markdown(message["content"])
+
+            # Display download buttons if this message has output files
+            if "output_files" in message and message["output_files"]:
+                display_download_section(message["output_files"])
 
 # Check for pending query from example buttons
 if "pending_query" in st.session_state and st.session_state.pending_query:
@@ -437,9 +447,7 @@ if prompt:
             # Display final response
             message_placeholder.markdown(full_response)
 
-            # Display download section for any output files
-            if st.session_state.output_files:
-                display_download_section(st.session_state.output_files)
+            # Note: Download buttons will be displayed after rerun from message history
 
             # Add to conversation history
             if ACTIVE_PROVIDER == 'azure':
@@ -460,6 +468,8 @@ if prompt:
             }
             if tool_calls:
                 assistant_message["tool_calls"] = tool_calls
+            if st.session_state.output_files:
+                assistant_message["output_files"] = st.session_state.output_files.copy()
 
             st.session_state.messages.append(assistant_message)
             total_time = time.time() - start_time

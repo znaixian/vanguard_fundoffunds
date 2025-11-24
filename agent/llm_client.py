@@ -15,7 +15,12 @@ load_dotenv()
 # Determine active provider
 def get_active_provider():
     """Determine which LLM provider to use"""
-    # Check for config.ini
+    # Priority 1: Environment variable (for local development)
+    env_provider = os.getenv('LLM_PROVIDER')
+    if env_provider:
+        return env_provider.lower()
+
+    # Priority 2: config.ini (for FactSet.io deployment)
     config_path = Path(os.getenv('PROJECT_ROOT', os.getcwd())) / 'config' / 'config.ini'
     if config_path.exists():
         config = configparser.ConfigParser()
@@ -23,8 +28,8 @@ def get_active_provider():
         if 'LLMProvider' in config:
             return config['LLMProvider'].get('active_provider', 'anthropic').lower()
 
-    # Check environment variable
-    return os.getenv('LLM_PROVIDER', 'anthropic').lower()
+    # Default: Anthropic
+    return 'anthropic'
 
 # Check if running on Streamlit Cloud
 def get_streamlit_secrets():
@@ -184,14 +189,14 @@ def create_message(messages, tools=None, system=None):
                 messages=openai_messages,
                 functions=openai_functions,
                 function_call="auto",
-                temperature=0.7,
+                temperature=0,
                 max_tokens=MAX_TOKENS
             )
         else:
             response = LLM_CLIENT.chat.completions.create(
                 model=MODEL,
                 messages=openai_messages,
-                temperature=0.7,
+                temperature=0,
                 max_tokens=MAX_TOKENS
             )
 
@@ -201,6 +206,7 @@ def create_message(messages, tools=None, system=None):
         return LLM_CLIENT.messages.create(
             model=MODEL,
             max_tokens=MAX_TOKENS,
+            temperature=0,
             system=system,
             tools=tools,
             messages=messages
