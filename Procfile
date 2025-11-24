@@ -1,1 +1,1 @@
-web: sh setup.sh && streamlit run vanguard_agent_ui.py --server.port=$PORT --server.address=0.0.0.0
+web: streamlit run vanguard_agent_ui.py --server.port=$PORT --server.address=0.0.0.0 --server.headless=true --server.enableCORS=false
