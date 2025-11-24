@@ -9,6 +9,7 @@ Usage:
 
 import argparse
 import sys
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict
@@ -251,10 +252,11 @@ class DailyPipeline:
 
     def _send_summary(self):
         """Send email summary of all fund results."""
-        # Check if email credentials are available (skip on FactSet.io deployment)
+        # Check if email credentials are available
         email_password_file = Path('config/email_password.txt')
-        if not email_password_file.exists():
-            self.logger.info("Email credentials not found - skipping email notification (running on FactSet.io or similar)")
+        has_password = os.getenv('EMAIL_PASSWORD') or email_password_file.exists()
+        if not has_password:
+            self.logger.info("Email credentials not found - skipping email notification")
             return
 
         emailer = EmailNotifier('config/email_config.yaml')
@@ -284,9 +286,10 @@ class DailyPipeline:
 
     def _send_failure_email(self, error: str):
         """Send critical failure email."""
-        # Check if email credentials are available (skip on FactSet.io deployment)
+        # Check if email credentials are available
         email_password_file = Path('config/email_password.txt')
-        if not email_password_file.exists():
+        has_password = os.getenv('EMAIL_PASSWORD') or email_password_file.exists()
+        if not has_password:
             self.logger.info("Email credentials not found - skipping failure email notification")
             return
 
