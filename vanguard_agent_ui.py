@@ -273,59 +273,125 @@ if prompt:
             tool_calls = []
             iteration = 0
 
-            # Handle tool use (Anthropic only for now)
+            # Handle tool use - works for both Anthropic and Azure
             if ACTIVE_PROVIDER == 'anthropic':
                 stop_reason = response.stop_reason
-            else:
-                stop_reason = 'end_turn'  # Azure doesn't support tool calling in same way
+                has_tool_calls = (stop_reason == "tool_use")
+            else:  # azure
+                # Check if Azure returned a function call
+                message = response.choices[0].message
+                has_tool_calls = hasattr(message, 'function_call') and message.function_call is not None
+                stop_reason = 'function_call' if has_tool_calls else 'stop'
 
-            while stop_reason == "tool_use" and ACTIVE_PROVIDER == 'anthropic':
+            while has_tool_calls:
                 iteration += 1
                 print(f"[TOOL] Processing tool use (iteration {iteration})...")
-                # Add assistant's response to history
-                st.session_state.conversation_history.append({
-                    "role": "assistant",
-                    "content": response.content
-                })
 
-                # Execute tools
+                # Execute tools based on provider
                 tool_results = []
-                for block in response.content:
-                    if block.type == "tool_use":
-                        tool_name = block.name
-                        tool_calls.append(tool_name)
 
-                        print(f"[TOOL] Executing: {tool_name} with input: {block.input}")
+                if ACTIVE_PROVIDER == 'anthropic':
+                    # Add assistant's response to history (Anthropic format)
+                    st.session_state.conversation_history.append({
+                        "role": "assistant",
+                        "content": response.content
+                    })
 
-                        # Show tool usage
-                        status_placeholder.info(f"Using tool: {tool_name}...")
-                        tool_placeholder.markdown(
-                            f'<div class="tool-use">[Tool] Using: {tool_name}</div>',
-                            unsafe_allow_html=True
-                        )
+                    # Process Anthropic tool calls
+                    for block in response.content:
+                        if block.type == "tool_use":
+                            tool_name = block.name
+                            tool_calls.append(tool_name)
 
-                        # Execute tool
-                        tool_start = time.time()
-                        result = execute_tool(tool_name, block.input)
-                        print(f"[TIMING] Tool execution: {(time.time() - tool_start)*1000:.0f}ms")
-                        print(f"[TOOL] Result type: {type(result)}")
+                            print(f"[TOOL] Executing: {tool_name} with input: {block.input}")
 
-                        # Extract output file paths if this is a calculator run
-                        if tool_name == "run_calculator" and isinstance(result, str):
-                            output_paths = extract_output_paths(result)
-                            st.session_state.output_files.extend(output_paths)
+                            # Show tool usage
+                            status_placeholder.info(f"Using tool: {tool_name}...")
+                            tool_placeholder.markdown(
+                                f'<div class="tool-use">[Tool] Using: {tool_name}</div>',
+                                unsafe_allow_html=True
+                            )
 
-                        tool_results.append({
+                            # Execute tool
+                            tool_start = time.time()
+                            result = execute_tool(tool_name, block.input)
+                            print(f"[TIMING] Tool execution: {(time.time() - tool_start)*1000:.0f}ms")
+                            print(f"[TOOL] Result type: {type(result)}")
+
+                            # Extract output file paths if this is a calculator run
+                            if tool_name == "run_calculator" and isinstance(result, str):
+                                output_paths = extract_output_paths(result)
+                                st.session_state.output_files.extend(output_paths)
+
+                            tool_results.append({
+                                "type": "tool_result",
+                                "tool_use_id": block.id,
+                                "content": result
+                            })
+
+                    # Add tool results to history
+                    st.session_state.conversation_history.append({
+                        "role": "user",
+                        "content": tool_results
+                    })
+
+                else:  # azure
+                    import json
+
+                    # Get Azure function call
+                    message = response.choices[0].message
+                    function_call = message.function_call
+                    tool_name = function_call.name
+                    tool_calls.append(tool_name)
+
+                    print(f"[TOOL] Executing: {tool_name} with arguments: {function_call.arguments}")
+
+                    # Show tool usage
+                    status_placeholder.info(f"Using tool: {tool_name}...")
+                    tool_placeholder.markdown(
+                        f'<div class="tool-use">[Tool] Using: {tool_name}</div>',
+                        unsafe_allow_html=True
+                    )
+
+                    # Parse arguments
+                    tool_input = json.loads(function_call.arguments)
+
+                    # Add assistant's message with function call to history
+                    st.session_state.conversation_history.append({
+                        "role": "assistant",
+                        "content": message.content or f"Calling {tool_name}..."
+                    })
+
+                    # Execute tool
+                    tool_start = time.time()
+                    result = execute_tool(tool_name, tool_input)
+                    print(f"[TIMING] Tool execution: {(time.time() - tool_start)*1000:.0f}ms")
+                    print(f"[TOOL] Result type: {type(result)}")
+
+                    # Extract result text
+                    if isinstance(result, dict) and 'content' in result:
+                        result_content = result['content']
+                        if isinstance(result_content, list) and len(result_content) > 0:
+                            result_text = result_content[0].get('text', str(result))
+                        else:
+                            result_text = str(result)
+                    else:
+                        result_text = str(result)
+
+                    # Extract output file paths if this is a calculator run
+                    if tool_name == "run_calculator":
+                        output_paths = extract_output_paths(result_text)
+                        st.session_state.output_files.extend(output_paths)
+
+                    # Add function result to history (OpenAI format)
+                    st.session_state.conversation_history.append({
+                        "role": "user",
+                        "content": [{
                             "type": "tool_result",
-                            "tool_use_id": block.id,
-                            "content": result
-                        })
-
-                # Add tool results to history
-                st.session_state.conversation_history.append({
-                    "role": "user",
-                    "content": tool_results
-                })
+                            "tool_name": tool_name,
+                            "content": result_text
+                        }]
+                    })
 
                 # Get next response
                 followup_start = time.time()
@@ -336,9 +402,19 @@ if prompt:
                     tools=TOOLS,
                     system=SYSTEM_PROMPT
                 )
-                print(f"[API] Follow-up response received. Stop reason: {response.stop_reason}")
+                print(f"[API] Follow-up response received")
                 print(f"[TIMING] Follow-up API call: {(time.time() - followup_start)*1000:.0f}ms")
-                stop_reason = response.stop_reason
+
+                # Check for more tool calls
+                if ACTIVE_PROVIDER == 'anthropic':
+                    stop_reason = response.stop_reason
+                    has_tool_calls = (stop_reason == "tool_use")
+                    print(f"[RESPONSE] Anthropic stop_reason: {stop_reason}")
+                else:  # azure
+                    message = response.choices[0].message
+                    has_tool_calls = hasattr(message, 'function_call') and message.function_call is not None
+                    stop_reason = 'function_call' if has_tool_calls else 'stop'
+                    print(f"[RESPONSE] Azure has more function calls: {has_tool_calls}")
 
             # Clear status indicator
             status_placeholder.empty()

@@ -95,6 +95,23 @@ else:  # anthropic
     LLM_CLIENT = Anthropic(api_key=ANTHROPIC_API_KEY)
 
 
+def convert_anthropic_tools_to_openai(tools):
+    """Convert Anthropic tool format to OpenAI function format"""
+    if not tools:
+        return None
+
+    openai_functions = []
+    for tool in tools:
+        openai_func = {
+            "name": tool["name"],
+            "description": tool["description"],
+            "parameters": tool["input_schema"]
+        }
+        openai_functions.append(openai_func)
+
+    return openai_functions
+
+
 def create_message(messages, tools=None, system=None):
     """
     Create a message using the active LLM provider.
@@ -121,35 +138,62 @@ def create_message(messages, tools=None, system=None):
                 if isinstance(msg['content'], str):
                     openai_messages.append({"role": "user", "content": msg['content']})
                 elif isinstance(msg['content'], list):
-                    # Handle tool results
+                    # Handle tool results - convert to function messages
                     for block in msg['content']:
                         if block.get('type') == 'tool_result':
+                            # Extract tool name and result
+                            content = block.get('content', '')
+                            if isinstance(content, dict):
+                                content = str(content.get('content', [{}])[0].get('text', ''))
+                            elif isinstance(content, list):
+                                content = str(content[0].get('text', '')) if content else ''
+
                             openai_messages.append({
                                 "role": "function",
-                                "name": "tool_result",
-                                "content": str(block.get('content', ''))
+                                "name": block.get('tool_name', 'unknown'),
+                                "content": str(content)
                             })
             elif msg['role'] == 'assistant':
                 if isinstance(msg['content'], list):
+                    # Handle assistant message with potential function calls
                     text_content = ""
+                    function_calls = []
+
                     for block in msg['content']:
                         if hasattr(block, 'text'):
                             text_content += block.text
-                        elif isinstance(block, dict) and block.get('type') == 'text':
-                            text_content += block.get('text', '')
+                        elif isinstance(block, dict):
+                            if block.get('type') == 'text':
+                                text_content += block.get('text', '')
+                            elif block.get('type') == 'tool_use':
+                                # This shouldn't happen in Azure flow, but handle it
+                                pass
+
                     if text_content:
                         openai_messages.append({"role": "assistant", "content": text_content})
                 elif isinstance(msg['content'], str):
                     openai_messages.append({"role": "assistant", "content": msg['content']})
 
-        # Note: Azure OpenAI doesn't support tool calling in the same way as Anthropic
-        # For now, we'll use simple message completion
-        response = LLM_CLIENT.chat.completions.create(
-            model=MODEL,
-            messages=openai_messages,
-            temperature=0.7,
-            max_tokens=MAX_TOKENS
-        )
+        # Convert tools to OpenAI functions format
+        openai_functions = convert_anthropic_tools_to_openai(tools) if tools else None
+
+        # Call Azure OpenAI with function calling support
+        if openai_functions:
+            response = LLM_CLIENT.chat.completions.create(
+                model=MODEL,
+                messages=openai_messages,
+                functions=openai_functions,
+                function_call="auto",
+                temperature=0.7,
+                max_tokens=MAX_TOKENS
+            )
+        else:
+            response = LLM_CLIENT.chat.completions.create(
+                model=MODEL,
+                messages=openai_messages,
+                temperature=0.7,
+                max_tokens=MAX_TOKENS
+            )
 
         return response
 
