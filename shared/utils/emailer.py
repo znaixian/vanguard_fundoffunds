@@ -28,20 +28,18 @@ class EmailNotifier:
         with open(config_path) as f:
             self.config = yaml.safe_load(f)
 
-        # Read password - prioritize environment variable (for FactSet.io), fallback to file (for local)
+        # Read password - prioritize environment variable, fallback to file, allow None for no-auth SMTP
         self.password = os.getenv('EMAIL_PASSWORD')
         if not self.password:
-            password_file = self.config['smtp']['password_file']
-            password_path = Path(password_file)
-            if password_path.exists():
-                with open(password_file) as f:
-                    self.password = f.read().strip()
-            else:
-                raise ValueError(
-                    "Email password not configured. "
-                    "For local: Create config/email_password.txt. "
-                    "For FactSet.io: Set EMAIL_PASSWORD environment variable."
-                )
+            password_file = self.config['smtp'].get('password_file', '')
+            if password_file:  # Only try to read if password_file is specified
+                password_path = Path(password_file)
+                if password_path.exists():
+                    with open(password_file) as f:
+                        self.password = f.read().strip()
+            # If still no password, set to None (for no-auth SMTP like FactSet.io internal)
+            if not self.password:
+                self.password = None
 
     def send_daily_summary(
         self,
@@ -218,7 +216,9 @@ class EmailNotifier:
             with smtplib.SMTP(self.config['smtp']['server'], self.config['smtp']['port'], timeout=30) as server:
                 if self.config['smtp']['use_tls']:
                     server.starttls()
-                server.login(self.config['smtp']['username'], self.password)
+                # Only login if password is configured (skip for no-auth SMTP like FactSet.io internal)
+                if self.password:
+                    server.login(self.config['smtp']['username'], self.password)
                 server.send_message(msg)
         except Exception as e:
             print(f"WARNING: Email send failed: {e}")

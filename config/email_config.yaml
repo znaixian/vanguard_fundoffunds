@@ -6,12 +6,19 @@ smtp:
   # username: "znaixian@gmail.com"
   # password_file: "config/email_password.txt"  # Gitignored
 
-  # Outlook/Office 365 configuration
-  server: "smtp.office365.com"
-  port: 587
-  use_tls: true
+  # Outlook/Office 365 configuration (for local use)
+  # server: "smtp.office365.com"
+  # port: 587
+  # use_tls: true
+  # username: "naixian.carucci@factset.com"
+  # password_file: "config/email_password.txt"
+
+  # FactSet.io internal SMTP (no authentication required)
+  server: "mail-internalonly.factset.com"
+  port: 25
+  use_tls: false
   username: "naixian.carucci@factset.com"
-  password_file: "config/email_password.txt"  # For local, use EMAIL_PASSWORD env var for FactSet.io
+  password_file: ""  # No password needed for FactSet.io internal SMTP
 
 recipients:
   success:
