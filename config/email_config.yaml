@@ -1,9 +1,17 @@
 smtp:
-  server: "smtp.gmail.com"
+  # Gmail configuration (commented out, kept for reference)
+  # server: "smtp.gmail.com"
+  # port: 587
+  # use_tls: true
+  # username: "znaixian@gmail.com"
+  # password_file: "config/email_password.txt"  # Gitignored
+
+  # Outlook/Office 365 configuration
+  server: "smtp.office365.com"
   port: 587
   use_tls: true
-  username: "znaixian@gmail.com"
-  password_file: "config/email_password.txt"  # Gitignored
+  username: "naixian.carucci@factset.com"
+  password_file: "config/email_password.txt"  # For local, use EMAIL_PASSWORD env var for FactSet.io
 
 recipients:
   success:

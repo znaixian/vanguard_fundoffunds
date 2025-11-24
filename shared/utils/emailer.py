@@ -4,6 +4,7 @@ Sends structured email reports
 """
 
 import smtplib
+import os
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
@@ -27,10 +28,20 @@ class EmailNotifier:
         with open(config_path) as f:
             self.config = yaml.safe_load(f)
 
-        # Read password from separate file
-        password_file = self.config['smtp']['password_file']
-        with open(password_file) as f:
-            self.password = f.read().strip()
+        # Read password - prioritize environment variable (for FactSet.io), fallback to file (for local)
+        self.password = os.getenv('EMAIL_PASSWORD')
+        if not self.password:
+            password_file = self.config['smtp']['password_file']
+            password_path = Path(password_file)
+            if password_path.exists():
+                with open(password_file) as f:
+                    self.password = f.read().strip()
+            else:
+                raise ValueError(
+                    "Email password not configured. "
+                    "For local: Create config/email_password.txt. "
+                    "For FactSet.io: Set EMAIL_PASSWORD environment variable."
+                )
 
     def send_daily_summary(
         self,
