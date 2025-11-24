@@ -16,13 +16,13 @@ import os
 from datetime import datetime
 from pathlib import Path
 import re
-from anthropic import Anthropic
 
 # Import agent configuration and tools
 try:
-    from agent.config import ANTHROPIC_API_KEY, MODEL, MAX_TOKENS, TOOLS, SYSTEM_PROMPT
+    from agent.llm_client import LLM_CLIENT, MODEL, MAX_TOKENS, ACTIVE_PROVIDER, create_message
+    from agent.config import TOOLS, SYSTEM_PROMPT
     from agent.main import execute_tool
-    print(f"[INFO] Agent modules loaded successfully. Model: {MODEL}, Tools: {len(TOOLS)}")
+    print(f"[INFO] Agent modules loaded successfully. Provider: {ACTIVE_PROVIDER}, Model: {MODEL}, Tools: {len(TOOLS)}")
 except Exception as e:
     print(f"[ERROR] Failed to import agent modules: {e}")
     raise
@@ -138,7 +138,9 @@ with st.sidebar:
 
     st.subheader("Agent Information")
     st.info(f"""
-    **Model**: {MODEL.split('-')[-1].upper()}
+    **Provider**: {ACTIVE_PROVIDER.upper()}
+
+    **Model**: {MODEL}
 
     **Max Tokens**: {MAX_TOKENS:,}
 
@@ -240,32 +242,44 @@ if prompt:
         status_placeholder = st.empty()
 
         try:
-            # Initialize Anthropic client
+            # Initialize LLM client
             init_start = time.time()
-            print("[API] Initializing Claude client...")
-            status_placeholder.info("Connecting to Claude...")
-            client = Anthropic(api_key=ANTHROPIC_API_KEY)
+            print(f"[API] Initializing {ACTIVE_PROVIDER.upper()} client...")
+            status_placeholder.info(f"Connecting to {ACTIVE_PROVIDER.upper()}...")
             print(f"[TIMING] Client init: {(time.time() - init_start)*1000:.0f}ms")
 
-            # Call Claude API
+            # Call LLM API
             api_start = time.time()
-            print(f"[API] Calling Claude API (model: {MODEL})...")
+            print(f"[API] Calling {ACTIVE_PROVIDER.upper()} API (model: {MODEL})...")
             status_placeholder.info("Waiting for response...")
-            response = client.messages.create(
-                model=MODEL,
-                max_tokens=MAX_TOKENS,
-                system=SYSTEM_PROMPT,
-                tools=TOOLS,
-                messages=st.session_state.conversation_history
-            )
 
-            print(f"[API] Response received. Stop reason: {response.stop_reason}")
+            if ACTIVE_PROVIDER == 'azure':
+                # Azure OpenAI - Use simple function calling
+                response = create_message(
+                    messages=st.session_state.conversation_history,
+                    tools=TOOLS,
+                    system=SYSTEM_PROMPT
+                )
+            else:
+                # Anthropic Claude - Full tool support
+                response = create_message(
+                    messages=st.session_state.conversation_history,
+                    tools=TOOLS,
+                    system=SYSTEM_PROMPT
+                )
+
+            print(f"[API] Response received")
             print(f"[TIMING] First API call: {(time.time() - api_start)*1000:.0f}ms")
             tool_calls = []
             iteration = 0
 
-            # Handle tool use
-            while response.stop_reason == "tool_use":
+            # Handle tool use (Anthropic only for now)
+            if ACTIVE_PROVIDER == 'anthropic':
+                stop_reason = response.stop_reason
+            else:
+                stop_reason = 'end_turn'  # Azure doesn't support tool calling in same way
+
+            while stop_reason == "tool_use" and ACTIVE_PROVIDER == 'anthropic':
                 iteration += 1
                 print(f"[TOOL] Processing tool use (iteration {iteration})...")
                 # Add assistant's response to history
@@ -317,15 +331,14 @@ if prompt:
                 followup_start = time.time()
                 print(f"[API] Getting follow-up response after tool use...")
                 status_placeholder.info("Getting follow-up response...")
-                response = client.messages.create(
-                    model=MODEL,
-                    max_tokens=MAX_TOKENS,
-                    system=SYSTEM_PROMPT,
+                response = create_message(
+                    messages=st.session_state.conversation_history,
                     tools=TOOLS,
-                    messages=st.session_state.conversation_history
+                    system=SYSTEM_PROMPT
                 )
                 print(f"[API] Follow-up response received. Stop reason: {response.stop_reason}")
                 print(f"[TIMING] Follow-up API call: {(time.time() - followup_start)*1000:.0f}ms")
+                stop_reason = response.stop_reason
 
             # Clear status indicator
             status_placeholder.empty()
@@ -333,9 +346,15 @@ if prompt:
             # Extract final text response
             print("[RESPONSE] Extracting final text...")
             full_response = ""
-            for block in response.content:
-                if hasattr(block, "text"):
-                    full_response += block.text
+
+            if ACTIVE_PROVIDER == 'azure':
+                # Azure OpenAI response format
+                full_response = response.choices[0].message.content
+            else:
+                # Anthropic Claude response format
+                for block in response.content:
+                    if hasattr(block, "text"):
+                        full_response += block.text
 
             print(f"[RESPONSE] Final response length: {len(full_response)} characters")
 
@@ -347,10 +366,16 @@ if prompt:
                 display_download_section(st.session_state.output_files)
 
             # Add to conversation history
-            st.session_state.conversation_history.append({
-                "role": "assistant",
-                "content": response.content
-            })
+            if ACTIVE_PROVIDER == 'azure':
+                st.session_state.conversation_history.append({
+                    "role": "assistant",
+                    "content": full_response
+                })
+            else:
+                st.session_state.conversation_history.append({
+                    "role": "assistant",
+                    "content": response.content
+                })
 
             # Add to display messages
             assistant_message = {

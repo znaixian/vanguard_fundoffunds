@@ -12,6 +12,10 @@ boto3>=1.28.0
 anthropic>=0.39.0
 python-dotenv>=1.0.0
 
+# Azure OpenAI SDK
+openai>=1.0.0
+httpx>=0.24.0
+
 # UI
 streamlit>=1.28.0
 
